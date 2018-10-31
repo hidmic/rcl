@@ -32,6 +32,7 @@ add_executable(test_compile_headers
 )
 
 set(rcl_action_sources
+  src/${PROJECT_NAME}/action_client.c
   src/${PROJECT_NAME}/goal_state_machine.c
   src/${PROJECT_NAME}/names.c
   src/${PROJECT_NAME}/types.c
@@ -74,6 +75,17 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
   ament_find_gtest()
   # Gtests
+  # ament_add_gtest(test_action_client
+  #   test/rcl_action/test_action_client.cpp
+  # )
+  # if(TARGET test_action_client)
+  #   target_include_directories(test_action_client PUBLIC
+  #     ${rcl_INCLUDE_DIRS}
+  #   )
+  #   target_link_libraries(test_action_client
+  #     ${PROJECT_NAME}
+  #   )
+  # endif()
   ament_add_gtest(test_goal_state_machine
     test/rcl_action/test_goal_state_machine.cpp
   )
