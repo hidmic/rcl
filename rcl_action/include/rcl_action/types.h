@@ -41,6 +41,8 @@ extern "C"
 #define RCL_RET_ACTION_GOAL_REJECTED 2101
 /// Action client is invalid return code.
 #define RCL_RET_ACTION_CLIENT_INVALID 2102
+/// Action client got unrelated feedback.
+#define RCL_RET_ACTION_FEEDBACK_IGNORE 2104
 /// Action client failed to take response return code.
 #define RCL_RET_ACTION_CLIENT_TAKE_FAILED 2103
 /// Action server is invalid return code.
@@ -54,6 +56,11 @@ extern "C"
 
 // Forward declare
 typedef struct rcl_action_server_t rcl_action_server_t;
+
+typedef struct rcl_action_goal_id_t {
+  uint8_t origin_uuid[16];
+  int64_t sequence_number;
+} rcl_action_goal_id_t;
 
 // Typedef generated messages for convenience
 typedef action_msgs__msg__GoalInfo rcl_action_goal_info_t;

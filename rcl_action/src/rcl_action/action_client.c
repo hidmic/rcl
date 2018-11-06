@@ -44,6 +44,7 @@ typedef struct rcl_action_client_impl_t
   rcl_subscription_t feedback_subscription;
   rcl_subscription_t status_subscription;
   rcl_action_client_options_t options;
+  rcl_action_goal_id_t next_goal_id;
   char * action_name;
 } rcl_action_client_impl_t;
 
@@ -503,6 +504,19 @@ rcl_action_send_goal_request(
 }
 
 rcl_ret_t
+rcl_action_make_goal_id(const rcl_action_client_t * action_client,
+                        rcl_action_goal_id_t * goal_id) {
+  RCUTILS_LOG_DEBUG_NAMED(ROS_PACKAGE_NAME, "Taking action goal response");
+  if (!rcl_action_client_is_valid(action_client)) {
+    return RCL_RET_ACTION_CLIENT_INVALID;  // error already set
+  }
+  RCL_CHECK_ARGUMENT_FOR_NULL(goal_id, RCL_RET_INVALID_ARGUMENT);
+  *goal_id = action_client->impl->next_goal_id;
+  action_client->impl->next_goal_id.sequence_number++;
+  return RCL_RET_OK;
+}
+
+rcl_ret_t
 rcl_action_take_goal_response(
   const rcl_action_client_t * action_client,
   void * ros_goal_response)
@@ -512,10 +526,10 @@ rcl_action_take_goal_response(
     return RCL_RET_ACTION_CLIENT_INVALID;  // error already set
   }
   RCL_CHECK_ARGUMENT_FOR_NULL(ros_goal_response, RCL_RET_INVALID_ARGUMENT);
-  rmw_request_id_t ignored_request_header;
+  rmw_request_id_t ignored_request_id;
   rcl_ret_t ret = rcl_take_response(
     &action_client->impl->goal_client,
-    &ignored_request_header, ros_goal_response);
+    &ignored_request_id, ros_goal_response);
   if (RCL_RET_OK != ret) {
     if (RCL_RET_CLIENT_TAKE_FAILED == ret) {
       ret = RCL_RET_ACTION_CLIENT_TAKE_FAILED;
@@ -538,9 +552,10 @@ rcl_action_take_feedback(
     return RCL_RET_ACTION_CLIENT_INVALID;  // error already set
   }
   RCL_CHECK_ARGUMENT_FOR_NULL(ros_feedback, RCL_RET_INVALID_ARGUMENT);
+  rcl_action_client_impl_t * impl = action_client->impl;
   rmw_message_info_t ignored_message_info;
   rcl_ret_t ret = rcl_take(
-    &action_client->impl->feedback_subscription,
+    &impl->feedback_subscription,
     ros_feedback, &ignored_message_info);
   if (RCL_RET_OK != ret) {
     if (RCL_RET_SUBSCRIPTION_TAKE_FAILED == ret) {
@@ -550,6 +565,15 @@ rcl_action_take_feedback(
       return RCL_RET_BAD_ALLOC;
     }
     return RCL_RET_ERROR;
+  }
+  rcl_action_goal_id_t goal_id;
+  rosidl_action_type_support_t * type_support = impl->type_support;
+  ret = type_support->get_feedback_goal_id(ros_feedback, &goal_id);
+  if (RCL_RET_OK != ret) {
+    return RCL_RET_ERROR;
+  }
+  if (!memcmp(impl->uuid, goal_id.origin_uuid, sizeof(impl->uuid))) {
+    return RCL_RET_ACTION_FEEDBACK_IGNORE;
   }
   RCUTILS_LOG_DEBUG_NAMED(ROS_PACKAGE_NAME, "Action feedback taken");
   return RCL_RET_OK;
